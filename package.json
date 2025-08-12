@@ -1,7 +1,7 @@
 {
   "name": "@sgnl-actions/sailpoint-identity-now-enable-account",
   "version": "1.0.0",
-  "description": "SailPoint IdentityNow enable account action for SGNL Job Service",
+  "description": "SailPoint IdentityNow enable account action for SGNL CAEP Hub",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
