@@ -1,48 +1,55 @@
-name: job-template
-description: Template for SGNL JavaScript jobs - replace with your job description
+name: sailpoint-identity-now-enable-account
+description: Enable an account in SailPoint IdentityNow
 
 # Input parameters for web form generation
 inputs:
-  target:
+  accountId:
     type: text
-    description: Target resource identifier (e.g., user email, group ID)
+    description: The ID of the account to enable
     required: true
     validation:
       min: 1
-      max: 100
+      max: 255
 
-  action:
+  sailpointDomain:
     type: text
-    description: Action to perform on the target resource
+    description: SailPoint IdentityNow tenant domain (e.g., example.api.identitynow.com)
     required: true
     validation:
       min: 1
-      max: 50
+      max: 255
 
-  options:
-    type: array
-    description: Additional options for the operation
+  externalVerificationId:
+    type: text
+    description: External verification ID for the enable operation
     required: false
-    item_type: text
     validation:
-      max: 10
+      max: 255
 
-  dry_run:
+  forceProvisioning:
     type: boolean
-    description: Preview changes without executing them
+    description: Force provisioning of the account enable operation
     required: false
     default: false
 
 # Expected output structure
 outputs:
-  status:
+  accountId:
     type: text
-    description: Operation result (success, failed, recovered, etc.)
+    description: The ID of the account that was enabled
 
-  target:
+  enabled:
+    type: boolean
+    description: Whether the account was successfully enabled
+
+  taskId:
     type: text
-    description: The target resource that was processed
+    description: The ID of the provisioning task created
 
-  processed_at:
+  message:
+    type: text
+    description: Additional information about the operation
+
+  enabledAt:
     type: datetime
-    description: When the operation completed (ISO 8601)
+    description: When the account was enabled (ISO 8601)

@@ -1,130 +1,321 @@
+import { jest } from '@jest/globals';
 import script from '../src/script.mjs';
 
-describe('Job Template Script', () => {
-  const mockContext = {
-    env: {
-      ENVIRONMENT: 'test'
-    },
-    secrets: {
-      API_KEY: 'test-api-key-123456'
-    },
-    outputs: {},
-    partial_results: {},
-    current_step: 'start'
-  };
+// Mock the global fetch function
+global.fetch = jest.fn();
+global.URL = URL;
+global.console = {
+  log: jest.fn(),
+  error: jest.fn()
+};
+global.setTimeout = (fn) => {
+  // For testing, execute immediately
+  return fn();
+};
+
+describe('SailPoint IdentityNow Enable Account Action', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   describe('invoke handler', () => {
-    test('should execute successfully with minimal params', async () => {
+    it('should successfully enable an account', async () => {
       const params = {
-        target: 'test-user@example.com',
-        action: 'create'
+        accountId: 'acc123',
+        sailpointDomain: 'example.api.identitynow.com',
+        externalVerificationId: 'ext456',
+        forceProvisioning: true
       };
 
-      const result = await script.invoke(params, mockContext);
-
-      expect(result.status).toBe('success');
-      expect(result.target).toBe('test-user@example.com');
-      expect(result.action).toBe('create');
-      expect(result.status).toBeDefined();
-      expect(result.processed_at).toBeDefined();
-      expect(result.options_processed).toBe(0);
-    });
-
-    test('should handle dry run mode', async () => {
-      const params = {
-        target: 'test-user@example.com',
-        action: 'delete',
-        dry_run: true
+      const context = {
+        secrets: {
+          SAILPOINT_API_TOKEN: 'Bearer test-token'
+        },
+        environment: {}
       };
 
-      const result = await script.invoke(params, mockContext);
-
-      expect(result.status).toBe('dry_run_completed');
-      expect(result.target).toBe('test-user@example.com');
-      expect(result.action).toBe('delete');
-    });
-
-    test('should process options array', async () => {
-      const params = {
-        target: 'test-group',
-        action: 'update',
-        options: ['force', 'notify', 'audit']
+      const mockResponse = {
+        ok: true,
+        json: async () => ({ id: 'task789', message: 'Account enable initiated' })
       };
+      fetch.mockResolvedValue(mockResponse);
 
-      const result = await script.invoke(params, mockContext);
+      const result = await script.invoke(params, context);
 
-      expect(result.status).toBe('success');
-      expect(result.target).toBe('test-group');
-      expect(result.options_processed).toBe(3);
-    });
-
-    test('should handle context with previous job outputs', async () => {
-      const contextWithOutputs = {
-        ...mockContext,
-        outputs: {
-          'create-user': {
-            user_id: '12345',
-            created_at: '2024-01-15T10:30:00Z'
+      expect(fetch).toHaveBeenCalledWith(
+        'https://example.api.identitynow.com/v3/accounts/acc123/enable',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer test-token',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           },
-          'assign-groups': {
-            groups_assigned: 3
-          }
+          body: JSON.stringify({
+            externalVerificationId: 'ext456',
+            forceProvisioning: true
+          })
+        }
+      );
+
+      expect(result).toEqual({
+        accountId: 'acc123',
+        enabled: true,
+        taskId: 'task789',
+        message: 'Account enable initiated',
+        enabledAt: expect.any(String)
+      });
+    });
+
+    it('should handle missing optional parameters', async () => {
+      const params = {
+        accountId: 'acc123',
+        sailpointDomain: 'example.api.identitynow.com'
+      };
+
+      const context = {
+        secrets: {
+          SAILPOINT_API_TOKEN: 'test-token'
+        },
+        environment: {}
+      };
+
+      const mockResponse = {
+        ok: true,
+        json: async () => ({ taskId: 'task789' })
+      };
+      fetch.mockResolvedValue(mockResponse);
+
+      const result = await script.invoke(params, context);
+
+      expect(fetch).toHaveBeenCalledWith(
+        'https://example.api.identitynow.com/v3/accounts/acc123/enable',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer test-token',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({})
+        }
+      );
+
+      expect(result.enabled).toBe(true);
+    });
+
+    it('should validate required parameters', async () => {
+      const context = {
+        secrets: {
+          SAILPOINT_API_TOKEN: 'test-token'
         }
       };
 
+      await expect(script.invoke({}, context))
+        .rejects.toThrow('Invalid or missing accountId parameter');
+
+      await expect(script.invoke({ accountId: 'acc123' }, context))
+        .rejects.toThrow('Invalid or missing sailpointDomain parameter');
+    });
+
+    it('should validate required secrets', async () => {
       const params = {
-        target: 'user-12345',
-        action: 'finalize'
+        accountId: 'acc123',
+        sailpointDomain: 'example.api.identitynow.com'
       };
 
-      const result = await script.invoke(params, contextWithOutputs);
+      const context = { secrets: {} };
 
-      expect(result.status).toBe('success');
-      expect(result.target).toBe('user-12345');
-      expect(result.status).toBeDefined();
+      await expect(script.invoke(params, context))
+        .rejects.toThrow('Missing required secret: SAILPOINT_API_TOKEN');
+    });
+
+    it('should handle API error responses', async () => {
+      const params = {
+        accountId: 'acc123',
+        sailpointDomain: 'example.api.identitynow.com'
+      };
+
+      const context = {
+        secrets: {
+          SAILPOINT_API_TOKEN: 'test-token'
+        }
+      };
+
+      const mockResponse = {
+        ok: false,
+        status: 404,
+        json: async () => ({
+          detailCode: 'NOT_FOUND',
+          trackingId: 'track123'
+        })
+      };
+      fetch.mockResolvedValue(mockResponse);
+
+      await expect(script.invoke(params, context))
+        .rejects.toThrow('Failed to enable account: NOT_FOUND - track123');
+    });
+
+    it('should handle non-JSON error responses', async () => {
+      const params = {
+        accountId: 'acc123',
+        sailpointDomain: 'example.api.identitynow.com'
+      };
+
+      const context = {
+        secrets: {
+          SAILPOINT_API_TOKEN: 'test-token'
+        }
+      };
+
+      const mockResponse = {
+        ok: false,
+        status: 500,
+        json: async () => { throw new Error('Not JSON'); },
+        text: async () => 'Internal Server Error'
+      };
+      fetch.mockResolvedValue(mockResponse);
+
+      await expect(script.invoke(params, context))
+        .rejects.toThrow('Failed to enable account: Internal Server Error');
+    });
+
+    it('should encode accountId to prevent injection', async () => {
+      const params = {
+        accountId: 'acc/123&test=1',
+        sailpointDomain: 'example.api.identitynow.com'
+      };
+
+      const context = {
+        secrets: {
+          SAILPOINT_API_TOKEN: 'test-token'
+        }
+      };
+
+      const mockResponse = {
+        ok: true,
+        json: async () => ({ id: 'task789' })
+      };
+      fetch.mockResolvedValue(mockResponse);
+
+      await script.invoke(params, context);
+
+      expect(fetch).toHaveBeenCalledWith(
+        'https://example.api.identitynow.com/v3/accounts/acc%2F123%26test%3D1/enable',
+        expect.any(Object)
+      );
     });
   });
 
   describe('error handler', () => {
-    test('should throw error by default', async () => {
+    it('should retry on rate limiting (429)', async () => {
       const params = {
-        target: 'test-user@example.com',
-        action: 'create',
-        error: {
-          message: 'Something went wrong',
-          code: 'ERROR_CODE'
+        accountId: 'acc123',
+        sailpointDomain: 'example.api.identitynow.com',
+        error: { message: 'HTTP 429', statusCode: 429 }
+      };
+
+      const context = {
+        secrets: {
+          SAILPOINT_API_TOKEN: 'test-token'
+        },
+        environment: {
+          RATE_LIMIT_BACKOFF_MS: '1000'
         }
       };
 
-      await expect(script.error(params, mockContext)).rejects.toThrow('Unable to recover from error: Something went wrong');
+      const mockResponse = {
+        ok: true,
+        json: async () => ({ id: 'task789' })
+      };
+      fetch.mockResolvedValue(mockResponse);
+
+      const result = await script.error(params, context);
+
+      expect(result).toMatchObject({
+        accountId: 'acc123',
+        enabled: true,
+        recoveryMethod: 'rate_limit_retry'
+      });
+    });
+
+    it('should retry on service errors (502, 503, 504)', async () => {
+      const params = {
+        accountId: 'acc123',
+        sailpointDomain: 'example.api.identitynow.com',
+        error: { message: 'Service unavailable', statusCode: 503 }
+      };
+
+      const context = {
+        secrets: {
+          SAILPOINT_API_TOKEN: 'test-token'
+        },
+        environment: {
+          SERVICE_ERROR_BACKOFF_MS: '500'
+        }
+      };
+
+      const mockResponse = {
+        ok: true,
+        json: async () => ({ taskId: 'task789' })
+      };
+      fetch.mockResolvedValue(mockResponse);
+
+      const result = await script.error(params, context);
+
+      expect(result).toMatchObject({
+        accountId: 'acc123',
+        enabled: true,
+        recoveryMethod: 'service_retry'
+      });
+    });
+
+    it('should throw on unrecoverable errors', async () => {
+      const params = {
+        accountId: 'acc123',
+        error: { message: 'Authentication failed', statusCode: 401 }
+      };
+
+      const context = {
+        secrets: {},
+        environment: {}
+      };
+
+      await expect(script.error(params, context))
+        .rejects.toThrow('Unrecoverable error enabling account acc123: Authentication failed');
     });
   });
 
   describe('halt handler', () => {
-    test('should handle graceful shutdown', async () => {
+    it('should handle graceful shutdown', async () => {
       const params = {
-        target: 'test-user@example.com',
+        accountId: 'acc123',
+        reason: 'user_requested'
+      };
+
+      const context = {};
+
+      const result = await script.halt(params, context);
+
+      expect(result).toEqual({
+        accountId: 'acc123',
+        reason: 'user_requested',
+        haltedAt: expect.any(String),
+        cleanupCompleted: true
+      });
+    });
+
+    it('should handle missing accountId', async () => {
+      const params = {
         reason: 'timeout'
       };
 
-      const result = await script.halt(params, mockContext);
+      const context = {};
 
-      expect(result.status).toBe('halted');
-      expect(result.target).toBe('test-user@example.com');
+      const result = await script.halt(params, context);
+
+      expect(result.accountId).toBe('unknown');
       expect(result.reason).toBe('timeout');
-      expect(result.halted_at).toBeDefined();
-    });
-
-    test('should handle halt without target', async () => {
-      const params = {
-        reason: 'system_shutdown'
-      };
-
-      const result = await script.halt(params, mockContext);
-
-      expect(result.status).toBe('halted');
-      expect(result.target).toBe('unknown');
-      expect(result.reason).toBe('system_shutdown');
     });
   });
 });

@@ -1,7 +1,7 @@
 {
-  "name": "@sgnl/job-template",
+  "name": "@sgnl-actions/sailpoint-identity-now-enable-account",
   "version": "1.0.0",
-  "description": "Template for SGNL JavaScript jobs",
+  "description": "SailPoint IdentityNow enable account action for SGNL Job Service",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

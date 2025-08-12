@@ -1,100 +1,228 @@
 /**
- * SGNL Job Template
+ * SailPoint IdentityNow Enable Account Action
  *
- * This template provides a starting point for implementing SGNL jobs.
- * Replace this implementation with your specific business logic.
+ * Enables an account in SailPoint IdentityNow by calling the /v3/accounts/{id}/enable endpoint.
+ * This action is commonly used to re-enable disabled accounts for users who need access restored.
  */
+
+/**
+ * Helper function to enable an account in SailPoint IdentityNow
+ * @private
+ */
+async function enableAccount(accountId, sailpointDomain, authToken, externalVerificationId, forceProvisioning) {
+  // Safely encode accountId to prevent injection
+  const encodedAccountId = encodeURIComponent(accountId);
+  const url = new URL(`/v3/accounts/${encodedAccountId}/enable`, `https://${sailpointDomain}`);
+
+  // Build request body
+  const requestBody = {};
+
+  if (externalVerificationId) {
+    requestBody.externalVerificationId = externalVerificationId;
+  }
+
+  if (forceProvisioning !== undefined && forceProvisioning !== null) {
+    requestBody.forceProvisioning = forceProvisioning;
+  }
+
+  // Ensure auth token has Bearer prefix
+  const authHeader = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
+
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    headers: {
+      'Authorization': authHeader,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(requestBody)
+  });
+
+  return response;
+}
+
 
 export default {
   /**
-   * Main execution handler - implement your job logic here
+   * Main execution handler - enables an account in SailPoint IdentityNow
    * @param {Object} params - Job input parameters
+   * @param {string} params.accountId - The ID of the account to enable
+   * @param {string} params.sailpointDomain - The SailPoint IdentityNow tenant domain
+   * @param {string} params.externalVerificationId - Optional external verification ID
+   * @param {boolean} params.forceProvisioning - Optional force provisioning flag
    * @param {Object} context - Execution context with env, secrets, outputs
    * @returns {Object} Job results
    */
   invoke: async (params, context) => {
-    console.log('Starting job execution');
-    console.log(`Processing target: ${params.target}`);
-    console.log(`Action: ${params.action}`);
+    const { accountId, sailpointDomain, externalVerificationId, forceProvisioning } = params;
 
-    // TODO: Replace with your implementation
-    const { target, action, options = [], dry_run = false } = params;
+    console.log(`Starting SailPoint IdentityNow account enable for account: ${accountId}`);
 
-    if (dry_run) {
-      console.log('DRY RUN: No changes will be made');
+    // Validate inputs
+    if (!accountId || typeof accountId !== 'string') {
+      throw new Error('Invalid or missing accountId parameter');
+    }
+    if (!sailpointDomain || typeof sailpointDomain !== 'string') {
+      throw new Error('Invalid or missing sailpointDomain parameter');
     }
 
-    // Access environment variables
-    const environment = context.env.ENVIRONMENT || 'development';
-    console.log(`Running in ${environment} environment`);
-
-    // Access secrets securely (example)
-    if (context.secrets.API_KEY) {
-      console.log(`Using API key ending in ...${context.secrets.API_KEY.slice(-4)}`);
+    // Validate SailPoint API token is present
+    if (!context.secrets?.SAILPOINT_API_TOKEN) {
+      throw new Error('Missing required secret: SAILPOINT_API_TOKEN');
     }
 
-    // Use outputs from previous jobs in workflow
-    if (context.outputs && Object.keys(context.outputs).length > 0) {
-      console.log(`Available outputs from ${Object.keys(context.outputs).length} previous jobs`);
-      console.log(`Previous job outputs: ${Object.keys(context.outputs).join(', ')}`);
+    // Make the API request to enable account
+    const response = await enableAccount(
+      accountId,
+      sailpointDomain,
+      context.secrets.SAILPOINT_API_TOKEN,
+      externalVerificationId,
+      forceProvisioning
+    );
+
+    // Handle the response
+    if (response.ok) {
+      // 202 Accepted is the expected success response
+      const responseData = await response.json();
+      console.log(`Successfully initiated account enable for account ${accountId}`);
+
+      return {
+        accountId: accountId,
+        enabled: true,
+        taskId: responseData.id || responseData.taskId,
+        message: responseData.message || 'Account enable operation initiated',
+        enabledAt: new Date().toISOString()
+      };
     }
 
-    // TODO: Implement your business logic here
-    console.log(`Performing ${action} on ${target}...`);
+    // Handle error responses
+    const statusCode = response.status;
+    let errorMessage = `Failed to enable account: HTTP ${statusCode}`;
 
-    if (options.length > 0) {
-      console.log(`Processing ${options.length} options: ${options.join(', ')}`);
+    try {
+      const errorBody = await response.json();
+      if (errorBody.detailCode) {
+        errorMessage = `Failed to enable account: ${errorBody.detailCode} - ${errorBody.trackingId || ''}`;
+      } else if (errorBody.message) {
+        errorMessage = `Failed to enable account: ${errorBody.message}`;
+      }
+      console.error('SailPoint API error response:', errorBody);
+    } catch {
+      // Response might not be JSON
+      const errorText = await response.text();
+      if (errorText) {
+        errorMessage = `Failed to enable account: ${errorText}`;
+      }
+      console.error('Failed to parse error response');
     }
 
-    console.log(`Successfully completed ${action} on ${target}`);
-
-    // Return structured results
-    return {
-      status: dry_run ? 'dry_run_completed' : 'success',
-      target: target,
-      action: action,
-      options_processed: options.length,
-      environment: environment,
-      processed_at: new Date().toISOString()
-      // Job completed successfully
-    };
+    // Throw error with status code for proper error handling
+    const error = new Error(errorMessage);
+    error.statusCode = statusCode;
+    throw error;
   },
 
   /**
-   * Error recovery handler - implement error handling logic
+   * Error recovery handler - attempts to recover from retryable errors
    * @param {Object} params - Original params plus error information
    * @param {Object} context - Execution context
    * @returns {Object} Recovery results
    */
-  error: async (params, _context) => {
-    const { error, target } = params;
-    console.error(`Job encountered error while processing ${target}: ${error.message}`);
+  error: async (params, context) => {
+    const { error, accountId, sailpointDomain, externalVerificationId, forceProvisioning } = params;
+    const statusCode = error.statusCode;
 
-    // TODO: Implement your error recovery logic
-    // Example: Check if error is retryable and attempt recovery
+    console.error(`Account enable failed for account ${accountId}: ${error.message}`);
 
-    // For now, just throw the error - implement your logic here
-    throw new Error(`Unable to recover from error: ${error.message}`);
+    // Get configurable backoff times from environment
+    const rateLimitBackoffMs = parseInt(context.environment?.RATE_LIMIT_BACKOFF_MS || '30000', 10);
+    const serviceErrorBackoffMs = parseInt(context.environment?.SERVICE_ERROR_BACKOFF_MS || '10000', 10);
+
+    // Handle rate limiting (429)
+    if (statusCode === 429 || error.message.includes('429') || error.message.includes('rate limit')) {
+      console.log(`Rate limited by SailPoint API - waiting ${rateLimitBackoffMs}ms before retry`);
+      await new Promise(resolve => setTimeout(resolve, rateLimitBackoffMs));
+
+      console.log(`Retrying account enable for account ${accountId} after rate limit backoff`);
+
+      // Retry the operation using helper function
+      const retryResponse = await enableAccount(
+        accountId,
+        sailpointDomain,
+        context.secrets.SAILPOINT_API_TOKEN,
+        externalVerificationId,
+        forceProvisioning
+      );
+
+      if (retryResponse.ok) {
+        const responseData = await retryResponse.json();
+        console.log(`Successfully enabled account ${accountId} after retry`);
+
+        return {
+          accountId: accountId,
+          enabled: true,
+          taskId: responseData.id || responseData.taskId,
+          message: responseData.message || 'Account enable operation initiated after retry',
+          enabledAt: new Date().toISOString(),
+          recoveryMethod: 'rate_limit_retry'
+        };
+      }
+    }
+
+    // Handle temporary service issues (502, 503, 504)
+    if ([502, 503, 504].includes(statusCode)) {
+      console.log(`SailPoint service temporarily unavailable - waiting ${serviceErrorBackoffMs}ms before retry`);
+      await new Promise(resolve => setTimeout(resolve, serviceErrorBackoffMs));
+
+      console.log(`Retrying account enable for account ${accountId} after service interruption`);
+
+      // Retry the operation using helper function
+      const retryResponse = await enableAccount(
+        accountId,
+        sailpointDomain,
+        context.secrets.SAILPOINT_API_TOKEN,
+        externalVerificationId,
+        forceProvisioning
+      );
+
+      if (retryResponse.ok) {
+        const responseData = await retryResponse.json();
+        console.log(`Successfully enabled account ${accountId} after service recovery`);
+
+        return {
+          accountId: accountId,
+          enabled: true,
+          taskId: responseData.id || responseData.taskId,
+          message: responseData.message || 'Account enable operation initiated after service recovery',
+          enabledAt: new Date().toISOString(),
+          recoveryMethod: 'service_retry'
+        };
+      }
+    }
+
+    // Cannot recover from this error
+    console.error(`Unable to recover from error for account ${accountId}`);
+    throw new Error(`Unrecoverable error enabling account ${accountId}: ${error.message}`);
   },
 
   /**
-   * Graceful shutdown handler - implement cleanup logic
+   * Graceful shutdown handler - cleanup when job is halted
    * @param {Object} params - Original params plus halt reason
    * @param {Object} context - Execution context
    * @returns {Object} Cleanup results
    */
   halt: async (params, _context) => {
-    const { reason, target } = params;
-    console.log(`Job is being halted (${reason}) while processing ${target}`);
+    const { reason, accountId } = params;
+    console.log(`Account enable job is being halted (${reason}) for account ${accountId}`);
 
-    // TODO: Implement your cleanup logic
-    // Example: Save partial results, close connections, etc.
+    // No cleanup needed for this simple operation
+    // The POST request either completed or didn't
 
     return {
-      status: 'halted',
-      target: target || 'unknown',
+      accountId: accountId || 'unknown',
       reason: reason,
-      halted_at: new Date().toISOString()
+      haltedAt: new Date().toISOString(),
+      cleanupCompleted: true
     };
   }
 };
