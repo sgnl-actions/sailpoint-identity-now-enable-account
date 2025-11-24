@@ -29,7 +29,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'Bearer test-token'
+          BEARER_AUTH_TOKEN: 'Bearer test-token'
         },
         environment: {}
       };
@@ -75,7 +75,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         },
         environment: {}
       };
@@ -107,7 +107,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
     it('should validate required parameters', async () => {
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         }
       };
 
@@ -127,7 +127,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
       const context = { secrets: {} };
 
       await expect(script.invoke(params, context))
-        .rejects.toThrow('Missing required secret: SAILPOINT_API_TOKEN');
+        .rejects.toThrow('Missing required secret: BEARER_AUTH_TOKEN');
     });
 
     it('should handle API error responses', async () => {
@@ -138,7 +138,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         }
       };
 
@@ -164,7 +164,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         }
       };
 
@@ -188,7 +188,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         }
       };
 
@@ -217,7 +217,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         },
         environment: {
           RATE_LIMIT_BACKOFF_MS: '1000'
@@ -248,7 +248,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         },
         environment: {
           SERVICE_ERROR_BACKOFF_MS: '500'

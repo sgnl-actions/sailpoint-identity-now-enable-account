@@ -54,6 +54,7 @@ var script = {
    * @param {string} params.externalVerificationId - Optional external verification ID
    * @param {boolean} params.forceProvisioning - Optional force provisioning flag
    * @param {Object} context - Execution context with env, secrets, outputs
+   * @param {string} context.secrets.BEARER_AUTH_TOKEN - Bearer token for SailPoint IdentityNow API authentication
    * @returns {Object} Job results
    */
   invoke: async (params, context) => {
@@ -70,15 +71,15 @@ var script = {
     }
 
     // Validate SailPoint API token is present
-    if (!context.secrets?.SAILPOINT_API_TOKEN) {
-      throw new Error('Missing required secret: SAILPOINT_API_TOKEN');
+    if (!context.secrets?.BEARER_AUTH_TOKEN) {
+      throw new Error('Missing required secret: BEARER_AUTH_TOKEN');
     }
 
     // Make the API request to enable account
     const response = await enableAccount(
       accountId,
       sailpointDomain,
-      context.secrets.SAILPOINT_API_TOKEN,
+      context.secrets.BEARER_AUTH_TOKEN,
       externalVerificationId,
       forceProvisioning
     );
@@ -152,7 +153,7 @@ var script = {
       const retryResponse = await enableAccount(
         accountId,
         sailpointDomain,
-        context.secrets.SAILPOINT_API_TOKEN,
+        context.secrets.BEARER_AUTH_TOKEN,
         externalVerificationId,
         forceProvisioning
       );
@@ -183,7 +184,7 @@ var script = {
       const retryResponse = await enableAccount(
         accountId,
         sailpointDomain,
-        context.secrets.SAILPOINT_API_TOKEN,
+        context.secrets.BEARER_AUTH_TOKEN,
         externalVerificationId,
         forceProvisioning
       );
