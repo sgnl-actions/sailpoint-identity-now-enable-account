@@ -15,27 +15,50 @@ The action calls the SailPoint IdentityNow `/v3/accounts/{id}/enable` API endpoi
 
 ## Configuration
 
-### Secrets
+### Authentication
 
-| Name | Description | Required |
-|------|-------------|----------|
-| `BEARER_AUTH_TOKEN` | Bearer token for SailPoint IdentityNow API authentication | Yes |
+This action supports four authentication methods. Configure one of the following:
 
-### Environment Variables
+#### Option 1: Bearer Token (SailPoint API Token)
+| Secret | Description |
+|--------|-------------|
+| `BEARER_AUTH_TOKEN` | Bearer token for SailPoint IdentityNow API authentication |
 
-| Name | Description | Default |
-|------|-------------|---------|
-| `RATE_LIMIT_BACKOFF_MS` | Milliseconds to wait when rate limited | 30000 |
-| `SERVICE_ERROR_BACKOFF_MS` | Milliseconds to wait on service errors | 10000 |
+#### Option 2: Basic Authentication
+| Secret | Description |
+|--------|-------------|
+| `BASIC_USERNAME` | Username for SailPoint IdentityNow authentication |
+| `BASIC_PASSWORD` | Password for SailPoint IdentityNow authentication |
+
+#### Option 3: OAuth2 Client Credentials
+| Secret/Environment | Description |
+|-------------------|-------------|
+| `OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET` | OAuth2 client secret |
+| `OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID` | OAuth2 client ID |
+| `OAUTH2_CLIENT_CREDENTIALS_TOKEN_URL` | OAuth2 token endpoint URL |
+| `OAUTH2_CLIENT_CREDENTIALS_SCOPE` | OAuth2 scope (optional) |
+| `OAUTH2_CLIENT_CREDENTIALS_AUDIENCE` | OAuth2 audience (optional) |
+| `OAUTH2_CLIENT_CREDENTIALS_AUTH_STYLE` | OAuth2 auth style (optional) |
+
+#### Option 4: OAuth2 Authorization Code
+| Secret | Description |
+|--------|-------------|
+| `OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN` | OAuth2 access token |
+
+### Required Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `ADDRESS` | SailPoint IdentityNow API base URL | `https://example.api.identitynow.com` |
 
 ### Input Parameters
 
-| Name | Type | Description | Required |
-|------|------|-------------|----------|
-| `accountId` | string | The ID of the account to enable | Yes |
-| `sailpointDomain` | string | SailPoint IdentityNow tenant domain (e.g., `example.api.identitynow.com`) | Yes |
-| `externalVerificationId` | string | External verification ID for the enable operation | No |
-| `forceProvisioning` | boolean | Force provisioning of the account enable operation | No |
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `accountId` | string | Yes | The ID of the account to enable | `2c91808570bbdc7f0170c02c3a6301f5` |
+| `address` | string | No | Override API base URL | `https://custom.api.identitynow.com` |
+| `externalVerificationId` | string | No | External verification ID for the enable operation | `ticket-12345` |
+| `forceProvisioning` | boolean | No | Force provisioning of the account enable operation | `true` |
 
 ### Output Parameters
 
@@ -69,19 +92,20 @@ The action calls the SailPoint IdentityNow `/v3/accounts/{id}/enable` API endpoi
 
 ## Error Handling
 
-The action includes automatic retry logic for common transient errors:
+The action includes error handling with automatic retry logic managed by the framework:
 
-### Retryable Errors
-- **429 Rate Limit**: Waits 30 seconds (configurable) before retrying
-- **502 Bad Gateway**: Waits 10 seconds before retrying  
-- **503 Service Unavailable**: Waits 10 seconds before retrying
-- **504 Gateway Timeout**: Waits 10 seconds before retrying
-
-### Fatal Errors
-- **400 Bad Request**: Invalid parameters or account state
-- **401 Unauthorized**: Invalid or expired credentials
+### HTTP Status Codes
+- **202 Accepted**: Successful enable request (expected response)
+- **400 Bad Request**: Invalid account ID or account state
+- **401 Unauthorized**: Invalid authentication credentials
 - **403 Forbidden**: Insufficient permissions
-- **404 Not Found**: Account ID does not exist
+- **404 Not Found**: Account not found
+- **429 Rate Limit**: Too many requests
+- **502/503/504 Service Errors**: Temporary service issues
+
+### Automatic Retry Logic
+
+The framework automatically handles retry logic for transient errors. The error handler simply re-throws errors, allowing the framework to determine retry behavior based on the error type and status code.
 
 ## Security Considerations
 
