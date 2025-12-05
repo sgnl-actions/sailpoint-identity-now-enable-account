@@ -22,14 +22,14 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
     it('should successfully enable an account', async () => {
       const params = {
         accountId: 'acc123',
-        sailpointDomain: 'example.api.identitynow.com',
+        address: 'https://example.api.identitynow.com',
         externalVerificationId: 'ext456',
         forceProvisioning: true
       };
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'Bearer test-token'
+          BEARER_AUTH_TOKEN: 'Bearer test-token'
         },
         environment: {}
       };
@@ -70,12 +70,12 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
     it('should handle missing optional parameters', async () => {
       const params = {
         accountId: 'acc123',
-        sailpointDomain: 'example.api.identitynow.com'
+        address: 'https://example.api.identitynow.com'
       };
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         },
         environment: {}
       };
@@ -107,7 +107,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
     it('should validate required parameters', async () => {
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         }
       };
 
@@ -115,30 +115,30 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
         .rejects.toThrow('Invalid or missing accountId parameter');
 
       await expect(script.invoke({ accountId: 'acc123' }, context))
-        .rejects.toThrow('Invalid or missing sailpointDomain parameter');
+        .rejects.toThrow('No URL specified. Provide address parameter or ADDRESS environment variable');
     });
 
     it('should validate required secrets', async () => {
       const params = {
         accountId: 'acc123',
-        sailpointDomain: 'example.api.identitynow.com'
+        address: 'https://example.api.identitynow.com'
       };
 
-      const context = { secrets: {} };
+      const context = { secrets: {}, environment: {} };
 
       await expect(script.invoke(params, context))
-        .rejects.toThrow('Missing required secret: SAILPOINT_API_TOKEN');
+        .rejects.toThrow('No authentication configured');
     });
 
     it('should handle API error responses', async () => {
       const params = {
         accountId: 'acc123',
-        sailpointDomain: 'example.api.identitynow.com'
+        address: 'https://example.api.identitynow.com'
       };
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         }
       };
 
@@ -159,12 +159,12 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
     it('should handle non-JSON error responses', async () => {
       const params = {
         accountId: 'acc123',
-        sailpointDomain: 'example.api.identitynow.com'
+        address: 'https://example.api.identitynow.com'
       };
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         }
       };
 
@@ -183,12 +183,12 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
     it('should encode accountId to prevent injection', async () => {
       const params = {
         accountId: 'acc/123&test=1',
-        sailpointDomain: 'example.api.identitynow.com'
+        address: 'https://example.api.identitynow.com'
       };
 
       const context = {
         secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
+          BEARER_AUTH_TOKEN: 'test-token'
         }
       };
 
@@ -208,81 +208,27 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
   });
 
   describe('error handler', () => {
-    it('should retry on rate limiting (429)', async () => {
+    it('should rethrow errors', async () => {
+      const testError = new Error('Test error');
       const params = {
         accountId: 'acc123',
-        sailpointDomain: 'example.api.identitynow.com',
-        error: { message: 'HTTP 429', statusCode: 429 }
+        error: testError
       };
+      const context = {};
 
-      const context = {
-        secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
-        },
-        environment: {
-          RATE_LIMIT_BACKOFF_MS: '1000'
-        }
-      };
-
-      const mockResponse = {
-        ok: true,
-        json: async () => ({ id: 'task789' })
-      };
-      fetch.mockResolvedValue(mockResponse);
-
-      const result = await script.error(params, context);
-
-      expect(result).toMatchObject({
-        accountId: 'acc123',
-        enabled: true,
-        recoveryMethod: 'rate_limit_retry'
-      });
+      await expect(script.error(params, context)).rejects.toThrow('Test error');
     });
 
-    it('should retry on service errors (502, 503, 504)', async () => {
+    it('should rethrow errors with status codes', async () => {
+      const error = new Error('HTTP 429');
+      error.statusCode = 429;
       const params = {
         accountId: 'acc123',
-        sailpointDomain: 'example.api.identitynow.com',
-        error: { message: 'Service unavailable', statusCode: 503 }
+        error
       };
+      const context = {};
 
-      const context = {
-        secrets: {
-          SAILPOINT_API_TOKEN: 'test-token'
-        },
-        environment: {
-          SERVICE_ERROR_BACKOFF_MS: '500'
-        }
-      };
-
-      const mockResponse = {
-        ok: true,
-        json: async () => ({ taskId: 'task789' })
-      };
-      fetch.mockResolvedValue(mockResponse);
-
-      const result = await script.error(params, context);
-
-      expect(result).toMatchObject({
-        accountId: 'acc123',
-        enabled: true,
-        recoveryMethod: 'service_retry'
-      });
-    });
-
-    it('should throw on unrecoverable errors', async () => {
-      const params = {
-        accountId: 'acc123',
-        error: { message: 'Authentication failed', statusCode: 401 }
-      };
-
-      const context = {
-        secrets: {},
-        environment: {}
-      };
-
-      await expect(script.error(params, context))
-        .rejects.toThrow('Unrecoverable error enabling account acc123: Authentication failed');
+      await expect(script.error(params, context)).rejects.toThrow('HTTP 429');
     });
   });
 
