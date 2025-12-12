@@ -78,11 +78,6 @@ export default {
 
     console.log(`Starting SailPoint IdentityNow account enable for account: ${accountId}`);
 
-    // Validate inputs
-    if (!accountId || typeof accountId !== 'string') {
-      throw new Error('Invalid or missing accountId parameter');
-    }
-
     // Get base URL using utility function
     const baseUrl = getBaseUrl(params, context);
 
@@ -109,7 +104,8 @@ export default {
         enabled: true,
         taskId: responseData.id || responseData.taskId,
         message: responseData.message || 'Account enable operation initiated',
-        enabledAt: new Date().toISOString()
+        enabledAt: new Date().toISOString(),
+        address: baseUrl
       };
     }
 

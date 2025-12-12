@@ -20,36 +20,36 @@ The action calls the SailPoint IdentityNow `/v3/accounts/{id}/enable` API endpoi
 This action supports four authentication methods. Configure one of the following:
 
 #### Option 1: Bearer Token (SailPoint API Token)
-| Secret | Description |
-|--------|-------------|
-| `BEARER_AUTH_TOKEN` | Bearer token for SailPoint IdentityNow API authentication |
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `BEARER_AUTH_TOKEN` | Secret | Yes | Bearer token for SailPoint IdentityNow API authentication |
 
 #### Option 2: Basic Authentication
-| Secret | Description |
-|--------|-------------|
-| `BASIC_USERNAME` | Username for SailPoint IdentityNow authentication |
-| `BASIC_PASSWORD` | Password for SailPoint IdentityNow authentication |
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `BASIC_USERNAME` | Secret | Yes | Username for SailPoint IdentityNow authentication |
+| `BASIC_PASSWORD` | Secret | Yes | Password for SailPoint IdentityNow authentication |
 
 #### Option 3: OAuth2 Client Credentials
-| Secret/Environment | Description |
-|-------------------|-------------|
-| `OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET` | OAuth2 client secret |
-| `OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID` | OAuth2 client ID |
-| `OAUTH2_CLIENT_CREDENTIALS_TOKEN_URL` | OAuth2 token endpoint URL |
-| `OAUTH2_CLIENT_CREDENTIALS_SCOPE` | OAuth2 scope (optional) |
-| `OAUTH2_CLIENT_CREDENTIALS_AUDIENCE` | OAuth2 audience (optional) |
-| `OAUTH2_CLIENT_CREDENTIALS_AUTH_STYLE` | OAuth2 auth style (optional) |
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET` | Secret | Yes | OAuth2 client secret |
+| `OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID` | Environment | Yes | OAuth2 client ID |
+| `OAUTH2_CLIENT_CREDENTIALS_TOKEN_URL` | Environment | Yes | OAuth2 token endpoint URL |
+| `OAUTH2_CLIENT_CREDENTIALS_SCOPE` | Environment | No | OAuth2 scope |
+| `OAUTH2_CLIENT_CREDENTIALS_AUDIENCE` | Environment | No | OAuth2 audience |
+| `OAUTH2_CLIENT_CREDENTIALS_AUTH_STYLE` | Environment | No | OAuth2 auth style |
 
 #### Option 4: OAuth2 Authorization Code
-| Secret | Description |
-|--------|-------------|
-| `OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN` | OAuth2 access token |
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN` | Secret | Yes | OAuth2 access token |
 
-### Required Environment Variables
+### Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `ADDRESS` | SailPoint IdentityNow API base URL | `https://example.api.identitynow.com` |
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `ADDRESS` | Yes | Default SailPoint IdentityNow API base URL | `https://example.api.identitynow.com` |
 
 ### Input Parameters
 
@@ -69,6 +69,7 @@ This action supports four authentication methods. Configure one of the following
 | `taskId` | string | The ID of the provisioning task created |
 | `message` | string | Additional information about the operation |
 | `enabledAt` | datetime | When the account was enabled (ISO 8601) |
+| `address` | string | The SailPoint IdentityNow API base URL used |
 
 ## Usage Examples
 
