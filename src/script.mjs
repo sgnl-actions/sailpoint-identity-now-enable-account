@@ -14,7 +14,7 @@ import { getBaseURL, getAuthorizationHeader, resolveJSONPathTemplates} from '@sg
 async function enableAccount(accountId, baseUrl, authToken, externalVerificationId, forceProvisioning) {
   // Safely encode accountId to prevent injection
   const encodedAccountId = encodeURIComponent(accountId);
-  const url = new URL(`/v3/accounts/${encodedAccountId}/enable`, baseUrl);
+  const url = `${baseUrl}/v3/accounts/${encodedAccountId}/enable`;
 
   // Build request body
   const requestBody = {};
@@ -30,7 +30,7 @@ async function enableAccount(accountId, baseUrl, authToken, externalVerification
   // Ensure auth token has Bearer prefix
   const authHeader = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
 
-  const response = await fetch(url.toString(), {
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Authorization': authHeader,
