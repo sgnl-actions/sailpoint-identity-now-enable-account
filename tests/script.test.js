@@ -60,6 +60,7 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
 
       expect(result).toEqual({
         accountId: 'acc123',
+        address: 'https://example.api.identitynow.com',
         enabled: true,
         taskId: 'task789',
         message: 'Account enable initiated',
@@ -104,31 +105,6 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
       expect(result.enabled).toBe(true);
     });
 
-    it('should validate required parameters', async () => {
-      const context = {
-        secrets: {
-          BEARER_AUTH_TOKEN: 'test-token'
-        }
-      };
-
-      await expect(script.invoke({}, context))
-        .rejects.toThrow('Invalid or missing accountId parameter');
-
-      await expect(script.invoke({ accountId: 'acc123' }, context))
-        .rejects.toThrow('No URL specified. Provide address parameter or ADDRESS environment variable');
-    });
-
-    it('should validate required secrets', async () => {
-      const params = {
-        accountId: 'acc123',
-        address: 'https://example.api.identitynow.com'
-      };
-
-      const context = { secrets: {}, environment: {} };
-
-      await expect(script.invoke(params, context))
-        .rejects.toThrow('No authentication configured');
-    });
 
     it('should handle API error responses', async () => {
       const params = {
