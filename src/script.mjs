@@ -1,4 +1,4 @@
-import { getBaseURL, getAuthorizationHeader, resolveJSONPathTemplates} from '@sgnl-actions/utils';
+import { getBaseURL, getAuthorizationHeader} from '@sgnl-actions/utils';
 
 /**
  * SailPoint IdentityNow Enable Account Action
@@ -43,7 +43,6 @@ async function enableAccount(accountId, baseUrl, authToken, externalVerification
   return response;
 }
 
-
 export default {
   /**
    * Main execution handler - enables an account in SailPoint IdentityNow
@@ -74,20 +73,13 @@ export default {
    * @returns {Promise<Object>} Action result
    */
   invoke: async (params, context) => {
-    const jobContext = context.data || {};
 
-    // Resolve JSONPath templates in params
-    const { result: resolvedParams, errors } = resolveJSONPathTemplates(params, jobContext);
-    if (errors.length > 0) {
-     console.warn('Template resolution errors:', errors);
-    }
-
-    const { accountId, externalVerificationId, forceProvisioning } = resolvedParams;
+    const { accountId, externalVerificationId, forceProvisioning } = params;
 
     console.log(`Starting SailPoint IdentityNow account enable for account: ${accountId}`);
 
     // Get base URL using utility function
-    const baseUrl = getBaseURL(resolvedParams, context);
+    const baseUrl = getBaseURL(params, context);
 
     // Get authorization header
     const authHeader = await getAuthorizationHeader(context);
