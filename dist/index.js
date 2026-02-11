@@ -9,6 +9,11 @@
  */
 
 /**
+ * User-Agent header value for all SGNL CAEP Hub requests.
+ */
+const SGNL_USER_AGENT = 'SGNL-CAEP-Hub/2.0';
+
+/**
  * Get OAuth2 access token using client credentials flow
  * @param {Object} config - OAuth2 configuration
  * @param {string} config.tokenUrl - Token endpoint URL
@@ -39,7 +44,8 @@ async function getClientCredentialsToken(config) {
 
   const headers = {
     'Content-Type': 'application/x-www-form-urlencoded',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'User-Agent': SGNL_USER_AGENT
   };
 
   if (authStyle === 'InParams') {
@@ -158,6 +164,21 @@ function getBaseURL(params, context) {
 }
 
 /**
+ * Create full headers object with Authorization and common headers
+ * @param {Object} context - Execution context with env and secrets
+ * @returns {Promise<Object>} Headers object with Authorization, Accept, Content-Type
+ */
+async function createAuthHeaders(context) {
+  const authHeader = await getAuthorizationHeader(context);
+  return {
+    'Authorization': authHeader,
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'User-Agent': SGNL_USER_AGENT
+  };
+}
+
+/**
  * SailPoint IdentityNow Enable Account Action
  *
  * Enables an account in SailPoint IdentityNow by calling the /v3/accounts/{id}/enable endpoint.
@@ -168,7 +189,7 @@ function getBaseURL(params, context) {
  * Helper function to enable an account in SailPoint IdentityNow
  * @private
  */
-async function enableAccount(accountId, baseUrl, authToken, externalVerificationId, forceProvisioning) {
+async function enableAccount(accountId, baseUrl, headers, externalVerificationId, forceProvisioning) {
   // Safely encode accountId to prevent injection
   const encodedAccountId = encodeURIComponent(accountId);
   const url = `${baseUrl}/v3/accounts/${encodedAccountId}/enable`;
@@ -184,16 +205,9 @@ async function enableAccount(accountId, baseUrl, authToken, externalVerification
     requestBody.forceProvisioning = forceProvisioning;
   }
 
-  // Ensure auth token has Bearer prefix
-  const authHeader = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
-
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Authorization': authHeader,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
+    headers,
     body: JSON.stringify(requestBody)
   });
 
@@ -239,13 +253,13 @@ var script = {
     const baseUrl = getBaseURL(params, context);
 
     // Get authorization header
-    const authHeader = await getAuthorizationHeader(context);
+    const headers = await createAuthHeaders(context);
 
     // Make the API request to enable account
     const response = await enableAccount(
       accountId,
       baseUrl,
-      authHeader,
+      headers,
       externalVerificationId,
       forceProvisioning
     );
