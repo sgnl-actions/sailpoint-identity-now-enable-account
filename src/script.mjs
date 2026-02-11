@@ -1,4 +1,4 @@
-import { getBaseURL, getAuthorizationHeader} from '@sgnl-actions/utils';
+import { getBaseURL, getAuthorizationHeader } from '@sgnl-actions/utils';
 
 /**
  * SailPoint IdentityNow Enable Account Action
