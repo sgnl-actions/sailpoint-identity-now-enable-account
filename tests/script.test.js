@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import script from '../src/script.mjs';
+import { SGNL_USER_AGENT } from '@sgnl-actions/utils';
 
 // Mock the global fetch function
 global.fetch = jest.fn();
@@ -49,7 +50,8 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
           headers: {
             'Authorization': 'Bearer test-token',
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': SGNL_USER_AGENT
           },
           body: JSON.stringify({
             externalVerificationId: 'ext456',
@@ -96,7 +98,8 @@ describe('SailPoint IdentityNow Enable Account Action', () => {
           headers: {
             'Authorization': 'Bearer test-token',
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': SGNL_USER_AGENT
           },
           body: JSON.stringify({})
         }
