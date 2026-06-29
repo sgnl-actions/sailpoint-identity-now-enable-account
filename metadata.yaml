@@ -31,7 +31,6 @@ inputs:
     type: boolean
     description: Force provisioning of the account enable operation
     required: false
-    default: false
 
 # Expected output structure
 outputs:
